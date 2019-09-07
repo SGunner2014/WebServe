@@ -1,0 +1,3 @@
+/home/samgunner/Documents/ccpp/WebServe/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/samgunner/Documents/ccpp/WebServe/cmake-build-debug/CMakeFiles/WebServe.dir
+/home/samgunner/Documents/ccpp/WebServe/cmake-build-debug/CMakeFiles/edit_cache.dir
