@@ -5,6 +5,12 @@
 #define _MESSAGEDESCRIBER_C 1
 
 struct MessageDescriber {
-    int requestType;
+    enum RequestType {
+        GET,
+        HEAD,
+        PUT
+    };
+
+    // The file the client is trying to request, if any
     char *file;
 };

@@ -22,9 +22,8 @@ int main() {
         // Read HTTP request from client
         message = readMessage(connection);
         // Interpret the message
-        struct MessageDescriber *describer = handleMessage(message);
+        struct MessageDescriber *describer = parseMessage(message);
 
-        printf("%s", message);
         free(message);
         printf("Sending response...");
         response1 = content;

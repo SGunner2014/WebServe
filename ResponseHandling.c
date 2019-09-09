@@ -10,6 +10,11 @@
 #include "MessageDescriber.c"
 #endif
 
+#ifndef _STRING_H
+#include <string.h>
+#endif
+
+// Concatenates two strings together
 char *concat(const char *c1, const char *c2, const int nullChar) {
     unsigned long length;
     if (nullChar)
@@ -29,6 +34,8 @@ char *makeResponse(int code, char *content) {
     char *contentLength = malloc(sizeof(char) * 16);
     sprintf(contentLength, "%d", contentLengthInt);
     printf("%s", contentLength);
+    char *intermediateMessage;
+    char *finalMessage;
 
     // Convert int code to string version
     sprintf(codeStr, "%d", code);
@@ -43,24 +50,79 @@ char *makeResponse(int code, char *content) {
     };
 
     // Concatenate all the parts of the message together
-    char *finalMessage = concat(stuff[0], "200", 0);
-    finalMessage = concat(finalMessage, "\r\n", 0);
-    stuff[3] = concat(stuff[3], contentLength, 0);
-    stuff[3] = concat(stuff[3], "\r\n", 0);
+    finalMessage = concat(stuff[0], "200", 0);
+    intermediateMessage = concat(finalMessage, "\r\n", 0);
+    free(finalMessage);
+    finalMessage = intermediateMessage;
+    intermediateMessage = concat(stuff[3], contentLength, 0);
+    free(contentLength);
+    stuff[3] = intermediateMessage;
+    intermediateMessage = concat(stuff[3], "\r\n", 0);
+    stuff[3] = intermediateMessage;
 
     for (int i = 1; i < 5; i++) {
-        finalMessage = concat(finalMessage, stuff[i], 0);
+        intermediateMessage = concat(finalMessage, stuff[i], 0);
+        free(finalMessage);
+        finalMessage = intermediateMessage;
     }
 
-    finalMessage = concat(finalMessage, content, 0);
-    finalMessage = concat(finalMessage, "\r\n", 1);
+    intermediateMessage = concat(finalMessage, content, 0);
+    free(finalMessage);
+    finalMessage = intermediateMessage;
+    intermediateMessage = concat(finalMessage, "\r\n", 1);
+    free(finalMessage);
+    finalMessage = intermediateMessage;
 
     return finalMessage;
 }
 
+// Handles an incoming line and amends the describer accordingly
+void interpretLine(char *line, struct MessageDescriber *describer, const int lineNo) {
+    char *toMatch = " "; // We'll split it up by spaces
+    char *subPtr = strtok(line, toMatch);
+    int partNo = 0;
+
+    while (subPtr != NULL) {
+        if (lineNo == 0) {
+            if (partNo == 0) {
+                if (strcmp(subPtr, "GET") < 0) {
+                    describer->requestType = 1;
+                }
+            }
+        }
+
+        // Find the next part
+        subPtr = strtok(NULL, toMatch);
+
+        partNo++;
+    }
+}
+
 // Handles an incoming message and returns a describer
-struct MessageDescriber *handleMessage(char *content) {
-    struct MessageDescriber describer;
+struct MessageDescriber *parseMessage(char *content) {
+    // Create a new describer
+    struct MessageDescriber *describer = (struct MessageDescriber*) (sizeof(struct MessageDescriber));
+    int lineNo = 0;
+    char *line;
 
+    // Now, we need to parse the incoming message
+    // We'll split the incoming message by \r\n and interpret it on-the-fly
+    char *toMatch = "\r\n";
+    char *ptr = strtok(content, toMatch);
 
+    while (ptr != NULL) {
+        // Copy the line over
+        line = (char*) malloc(strlen(ptr));
+        strcpy(line, ptr);
+        // Interpret the line
+        interpretLine(ptr, describer, lineNo);
+        // Return the memory
+        free(line);
+
+        // find the next new line, or the end of the file
+        ptr = strtok(NULL, "\r\n");
+        lineNo++;
+    }
+
+    return NULL;
 }
