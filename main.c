@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "MessageDescriber.c"
+#include "ClientMessage.c"
 #include "FileUtilities.c"
 #include "Network.c"
 #include "ResponseHandling.c"
@@ -18,7 +18,7 @@ int main() {
         // Read HTTP request from client
         message = readMessage(connection);
         // Interpret the message
-        struct MessageDescriber describer = parseMessage(message);
+        struct ClientMessage describer = parseMessage(message);
         handleRequest(describer, connection);
         free(message);
         printf("Sending response...");

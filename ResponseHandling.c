@@ -2,12 +2,17 @@
 // Created by samgunner on 07/09/2019.
 //
 
+// include the necessary files
 #ifndef _STDIO_H
 #include <stdio.h>
 #endif
 
 #ifndef _MESSAGEDESCRIBER_C
-#include "MessageDescriber.c"
+#include "ClientMessage.c"
+#endif
+
+#ifndef _SERVER_MESSAGE_C
+#include "ServerMessage.c"
 #endif
 
 #ifndef _STRING_H
@@ -22,75 +27,58 @@
 #include "Network.c"
 #endif
 
+#include <math.h>
+
 // Concatenates two strings together
 // null char indicates if the string needs to be terminated with a null char
-char *concat(const char *c1, const char *c2, const int nullChar) {
-    unsigned long length;
-    if (nullChar)
-        length = strlen(c1) + strlen(c2) + 1;
-    else
-        length = strlen(c1) + strlen(c2);
+char *concat(const char *c1, const char *c2) {
+    unsigned long length = strlen(c1) + strlen(c2) + 1;
     char *final = malloc(length);
     strcpy(final, c1);
     strcat(final, c2);
     return final;
 }
 
-// Makes a valid HTTP response from the supplied content and code
-char *makeResponse(int code, char *content, int isHead) {
-    int contentLengthInt;
-    char *contentLength;
-    contentLengthInt = (int) strlen(content); // Length of content, in bytes
-    contentLength = malloc(sizeof(char) * 16);
-    sprintf(contentLength, "%d", contentLengthInt);
-
-    char codeStr[3] = {0};
-    char *intermediateMessage;
-    char *finalMessage;
-
-    // Convert int code to string version
-    sprintf(codeStr, "%d", code);
-
-    // Beginning parts of the message
-    char *stuff[] = {
-            "HTTP/1.1 ",
+// Forms a textual response that can be sent, given a server message
+char *makeResponse(const struct ServerMessage toSend) {
+    char *otherLines[] = {
             "Server: WebServe\r\n",
             "Content-Type: text/html\r\n",
             "Content-Length: ",
-            "Connection: Closed\r\n\n"
+            "Connection: Closed\r\n",
+            "\r\n\n"
     };
 
-    // Concatenate all the parts of the message together
-    finalMessage = concat(stuff[0], codeStr, 0);
-    intermediateMessage = concat(finalMessage, "\r\n", 0);
-    free(finalMessage);
-    finalMessage = intermediateMessage;
-    intermediateMessage = concat(stuff[3], contentLength, 0);
-    free(contentLength);
-    stuff[3] = intermediateMessage;
-    intermediateMessage = concat(stuff[3], "\r\n", 0);
-    stuff[3] = intermediateMessage;
-
-    for (int i = 1; i < 5; i++) {
-        intermediateMessage = concat(finalMessage, stuff[i], 0);
-        free(finalMessage);
-        finalMessage = intermediateMessage;
+    unsigned long totalLength = 0;
+    // loop through the content lines and figure out how long the message needs to be
+    for (int i = 0; i < 5; i++) {
+        totalLength += strlen(otherLines[i]); // Account for null char, remove
     }
 
-    if (isHead == 0) {
-        intermediateMessage = concat(finalMessage, content, 0);
-        free(finalMessage);
-        finalMessage = intermediateMessage;
-        intermediateMessage = concat(finalMessage, "\r\n", 1);
-        free(finalMessage);
-    }
-    finalMessage = intermediateMessage;
+    char *firstLine = "HTTP/1.1 ";
 
-    return finalMessage;
+    totalLength += toSend.contentLength;
+    totalLength += strlen(firstLine) + 4 + strlen(toSend.message) + 4 + 7 + 4; // Account for the length needed to represent the content length as well as carriage return and newline
+    totalLength++; // account for null char
+
+    char *toSendStr = malloc(sizeof(char) * totalLength + 1); //TODO: account for NULL
+    snprintf(toSendStr, totalLength, "%s%d%s%s%s", "HTTP/1.1 ", toSend.responseCode, " ", toSend.message, "\r\n");
+    for (int i = 0; i < 5; i++) {
+        if (i != 2) {
+            snprintf(toSendStr + strlen(toSendStr), totalLength - strlen(toSendStr), "%s", otherLines[i]);
+        } else {
+            snprintf(toSendStr + strlen(toSendStr), totalLength - strlen(toSendStr), "%s%lu%s", otherLines[i], toSend.contentLength, "\r\n");
+        }
+    }
+
+    if (toSend.content)
+        snprintf(toSendStr + strlen(toSendStr), totalLength - strlen(toSendStr), "%s", toSend.content);
+
+    return toSendStr;
 }
 
 // Handles an incoming line and amends the describer accordingly
-struct MessageDescriber interpretLine(char *line, struct MessageDescriber describer, const int lineNo) {
+struct ClientMessage interpretLine(char *line, struct ClientMessage describer, const int lineNo) {
     char *toMatch = " "; // We'll split it up by spaces
     char **subPtr = &line; // save where we got to when we match the string
     char *current = strtok_r(line, toMatch, subPtr);
@@ -104,9 +92,24 @@ struct MessageDescriber interpretLine(char *line, struct MessageDescriber descri
                     describer.requestType = GET;
                 } else if (strcmp(current, "HEAD") == 0) {
                     describer.requestType = HEAD;
+                } else {
+                    describer.requestType = INVALID;
                 }
             } else if (partNo == 1) { // Resource being requested
-                describer.file = current;
+                switch(describer.requestType) {
+                    case HEAD:
+                        describer.head.file = malloc(sizeof(char) * strlen(current));
+                        describer.head.file = strcpy(describer.head.file, current);
+                        break;
+                    case GET:
+                        describer.get.file = malloc(sizeof(char) * strlen(current));
+                        describer.get.file = strcpy(describer.get.file, current);
+                        break;
+                    case PUT:
+                        describer.put.file = malloc(sizeof(char) * strlen(current));
+                        describer.put.file = strcpy(describer.put.file, current);
+                        break;
+                }
             }
         }
 
@@ -119,9 +122,9 @@ struct MessageDescriber interpretLine(char *line, struct MessageDescriber descri
 }
 
 // Handles an incoming message and returns a describer
-struct MessageDescriber parseMessage(char *content) {
+struct ClientMessage parseMessage(char *content) {
     // Create a new describer
-    struct MessageDescriber messageDescriber;
+    struct ClientMessage messageDescriber;
     int lineNo = 0;
     char *line;
 
@@ -140,6 +143,7 @@ struct MessageDescriber parseMessage(char *content) {
 
         // find the next new line, or the end of the file
         ptr = strtok(NULL, "\r\n");
+        free(line);
         lineNo++;
     }
 
@@ -147,55 +151,71 @@ struct MessageDescriber parseMessage(char *content) {
 }
 
 // Sends a specified error code to the client
-void sendError(const int errorCode, const int sock_fd) {
-    char *message;
-
-    // Figure out the error code and determine an appropriate response
-    switch(errorCode) {
+void sendError(struct ServerMessage message, int sock_fd) {
+    // Figure out the appropriate response code
+    switch (message.responseCode) {
+        case 404:
+            message.message = "Resource cannot be located.";
+            break;
         case 400:
-            message = makeResponse(errorCode, "Invalid or malformed request.", 0);
+            message.message = "Invalid or malformed request.";
             break;
         default:
-            message = makeResponse(errorCode, "Invalid or malformed request.", 0);
+            message.message = "Invalid or malformed request.";
             break;
     }
 
-    // Send the message to the client
-    sendMessage(sock_fd, message);
-    free(message);
+    message.content = message.message;
+    message.contentLength = strlen(message.content);
+    char *response = makeResponse(message);
+    sendMessage(sock_fd, response);
 }
 
 // Handles a GET request
-void handleGet(const struct MessageDescriber describer, const int sock_fd) {
+void handleGet(const struct ClientMessage describer, const int sock_fd) {
     // validity logic and file obtaining
     char *toSend;
-    int statusCode, toFree = 0;
+    struct ServerMessage sMessage;
 
-    if (lookupFile(describer.file)) {
-        statusCode = 200;
-        toSend = readFile(describer.file);
+    if (lookupFile(describer.get.file)) {
+        sMessage.responseCode = 200;
+        sMessage.message = "OK";
+        toSend = readFile(describer.get.file);
+        sMessage.content = toSend;
+        sMessage.contentLength = strlen(toSend);
     } else {
-        statusCode = 404;
-        char *temp = "404. File not found: ";
-        toSend = concat(temp, describer.file, 1);
-        toFree = 1;
+        printf("%s%s", "Couldn't find file: ", describer.get.file);
+        sMessage.responseCode = 404;
+        sendError(sMessage, sock_fd);
+        return;
     }
 
-    char *message = makeResponse(statusCode, toSend, 0);
-    if (toFree)
-        free(toSend);
+    char *message = makeResponse(sMessage);
     sendMessage(sock_fd, message);
+    free(toSend);
 }
 
 // Handles a HEAD request
-void handleHead(const struct MessageDescriber describer, const int sock_fd) {
+void handleHead(const struct ClientMessage describer, const int sock_fd) {
     // same logic from get
-    char *message = makeResponse(200, "Hello, world", 1);
-    sendMessage(sock_fd, message);
+    struct ServerMessage message;
+    message.responseCode = 200;
+    message.content = "Hello, world";
+    message.contentLength = strlen(message.content);
+    message.message = "OK";
+    char *messageStr = makeResponse(message);
+    sendMessage(sock_fd, messageStr);
+}
+
+// handles an invalid request from the client
+void handleInvalidRequest(const struct ClientMessage describer, const int sock_fd) {
+    struct ServerMessage message;
+    message.responseCode = 400;
+    sendError(message, sock_fd);
 }
 
 // Handles a request after it has been parsed.
-void handleRequest(const struct MessageDescriber describer, const int sock_fd) {
+void handleRequest(const struct ClientMessage describer, const int sock_fd) {
     switch(describer.requestType) {
         case GET:
             handleGet(describer, sock_fd);
@@ -204,7 +224,7 @@ void handleRequest(const struct MessageDescriber describer, const int sock_fd) {
             handleHead(describer, sock_fd);
             break;
         default:
-            sendError(400, sock_fd);
+            handleInvalidRequest(describer, sock_fd);
             break;
     }
 }
