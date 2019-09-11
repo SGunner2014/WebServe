@@ -12,6 +12,7 @@
 #include <string.h>
 
 #define PORT 8081
+#define _NETWORK_C 1
 
 // Creates and registers a socket
 int createSocket() {

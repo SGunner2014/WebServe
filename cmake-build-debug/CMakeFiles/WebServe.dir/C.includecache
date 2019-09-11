@@ -6,14 +6,12 @@
 
 #IncludeRegexTransform: 
 
-/home/samgunner/Documents/ccpp/WebServe/FileStore.c
+/home/samgunner/Documents/ccpp/WebServe/FileUtilities.c
 stdlib.h
 -
 unistd.h
 -
-
-/home/samgunner/Documents/ccpp/WebServe/FileUtilities.c
-stdlib.h
+sys/stat.h
 -
 
 /home/samgunner/Documents/ccpp/WebServe/MessageDescriber.c
@@ -35,6 +33,12 @@ stdio.h
 -
 MessageDescriber.c
 /home/samgunner/Documents/ccpp/WebServe/MessageDescriber.c
+string.h
+-
+FileUtilities.c
+/home/samgunner/Documents/ccpp/WebServe/FileUtilities.c
+Network.c
+/home/samgunner/Documents/ccpp/WebServe/Network.c
 
 /home/samgunner/Documents/ccpp/WebServe/main.c
 stdio.h
@@ -47,6 +51,4 @@ Network.c
 /home/samgunner/Documents/ccpp/WebServe/Network.c
 ResponseHandling.c
 /home/samgunner/Documents/ccpp/WebServe/ResponseHandling.c
-FileStore.c
-/home/samgunner/Documents/ccpp/WebServe/FileStore.c
 
