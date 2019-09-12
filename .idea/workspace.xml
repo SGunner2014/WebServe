@@ -12,17 +12,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ffce6ac4-99e9-426e-a6e1-92f97022ad92" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/ClientMessage.c" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ServerMessage.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MessageDescriber.c" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/ResponseHandling.c" beforeDir="false" afterPath="$PROJECT_DIR$/ResponseHandling.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/WebServe.dir/C.includecache" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/WebServe.dir/C.includecache" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/WebServe.dir/depend.internal" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/WebServe.dir/depend.internal" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/WebServe.dir/depend.make" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/WebServe.dir/depend.make" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/WebServe.dir/main.c.o" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/WebServe.dir/main.c.o" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmake-build-debug/WebServe" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/WebServe" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/main.c" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -93,7 +86,7 @@
       <workItem from="1568163292280" duration="2210000" />
       <workItem from="1568226533431" duration="41000" />
       <workItem from="1568226649471" duration="870000" />
-      <workItem from="1568231195091" duration="6216000" />
+      <workItem from="1568231195091" duration="8769000" />
     </task>
     <servers />
   </component>

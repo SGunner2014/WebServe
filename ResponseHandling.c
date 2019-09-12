@@ -32,7 +32,7 @@
 // Concatenates two strings together
 // null char indicates if the string needs to be terminated with a null char
 char *concat(const char *c1, const char *c2) {
-    unsigned long length = strlen(c1) + strlen(c2) + 1;
+    size_t length = strlen(c1) + strlen(c2) + 1;
     char *final = malloc(length);
     strcpy(final, c1);
     strcat(final, c2);
@@ -40,6 +40,7 @@ char *concat(const char *c1, const char *c2) {
 }
 
 // Forms a textual response that can be sent, given a server message
+// Value must be freed after use.
 char *makeResponse(const struct ServerMessage toSend) {
     char *otherLines[] = {
             "Server: WebServe\r\n",
@@ -49,7 +50,7 @@ char *makeResponse(const struct ServerMessage toSend) {
             "\r\n\n"
     };
 
-    unsigned long totalLength = 0;
+    size_t totalLength = 0;
     // loop through the content lines and figure out how long the message needs to be
     for (int i = 0; i < 5; i++) {
         totalLength += strlen(otherLines[i]); // Account for null char, remove
@@ -61,7 +62,7 @@ char *makeResponse(const struct ServerMessage toSend) {
     totalLength += strlen(firstLine) + 4 + strlen(toSend.message) + 4 + 7 + 4; // Account for the length needed to represent the content length as well as carriage return and newline
     totalLength++; // account for null char
 
-    char *toSendStr = malloc(sizeof(char) * totalLength + 1); //TODO: account for NULL
+    char *toSendStr = (char*) malloc(sizeof(char) * totalLength + 1);
     snprintf(toSendStr, totalLength, "%s%d%s%s%s", "HTTP/1.1 ", toSend.responseCode, " ", toSend.message, "\r\n");
     for (int i = 0; i < 5; i++) {
         if (i != 2) {
@@ -125,27 +126,32 @@ struct ClientMessage interpretLine(char *line, struct ClientMessage describer, c
 struct ClientMessage parseMessage(char *content) {
     // Create a new describer
     struct ClientMessage messageDescriber;
+    char **subPtr = &content;
     int lineNo = 0;
-    char *line;
 
     // Now, we need to parse the incoming message
     // We'll split the incoming message by \r\n and interpret it on-the-fly
     char *toMatch = "\r\n";
-    char *ptr = strtok(content, toMatch); // get the first match
+    char *ptr = strtok_r(content, "\r\n", subPtr);
+    char *line = malloc(sizeof(char) * 10);
+    size_t lineLength = 10;
 
     while (ptr != NULL) {
         // Copy the line over
-        line = (char*) malloc(strlen(ptr));
+        if (strlen(ptr) > lineLength) {
+            line = realloc(line, sizeof(char) * strlen(ptr));
+            lineLength = strlen(ptr);
+        }
         strcpy(line, ptr);
         // Interpret the line
         messageDescriber = interpretLine(line, messageDescriber, lineNo);
         // Return the memory
 
         // find the next new line, or the end of the file
-        ptr = strtok(NULL, "\r\n");
-        free(line);
+        ptr = strtok_r(content, "\r\n", subPtr);
         lineNo++;
     }
+    free(line);
 
     return messageDescriber;
 }
@@ -169,6 +175,7 @@ void sendError(struct ServerMessage message, int sock_fd) {
     message.contentLength = strlen(message.content);
     char *response = makeResponse(message);
     sendMessage(sock_fd, response);
+    free(response);
 }
 
 // Handles a GET request
@@ -193,6 +200,7 @@ void handleGet(const struct ClientMessage describer, const int sock_fd) {
     char *message = makeResponse(sMessage);
     sendMessage(sock_fd, message);
     free(toSend);
+    free(message);
 }
 
 // Handles a HEAD request
@@ -205,6 +213,7 @@ void handleHead(const struct ClientMessage describer, const int sock_fd) {
     message.message = "OK";
     char *messageStr = makeResponse(message);
     sendMessage(sock_fd, messageStr);
+    free(messageStr);
 }
 
 // handles an invalid request from the client
@@ -226,5 +235,13 @@ void handleRequest(const struct ClientMessage describer, const int sock_fd) {
         default:
             handleInvalidRequest(describer, sock_fd);
             break;
+    }
+
+    if (describer.get.file) {
+        free(describer.get.file);
+    } else if (describer.head.file) {
+        free(describer.head.file);
+    } else if (describer.put.file) {
+        free(describer.put.file);
     }
 }
