@@ -34,8 +34,7 @@
 char *concat(const char *c1, const char *c2) {
     size_t length = strlen(c1) + strlen(c2) + 1;
     char *final = malloc(length);
-    strcpy(final, c1);
-    strcat(final, c2);
+    snprintf(final, strlen(c1) + strlen(c2), "%s%s", c1, c2);
     return final;
 }
 
@@ -63,7 +62,7 @@ char *makeResponse(const struct ServerMessage toSend) {
     totalLength++; // account for null char
 
     char *toSendStr = (char*) malloc(sizeof(char) * totalLength + 1);
-    snprintf(toSendStr, totalLength, "%s%d%s%s%s", "HTTP/1.1 ", toSend.responseCode, " ", toSend.message, "\r\n");
+    snprintf(toSendStr, totalLength, "%s%d%s%s%s", firstLine, toSend.responseCode, " ", toSend.message, "\r\n");
     for (int i = 0; i < 5; i++) {
         if (i != 2) {
             snprintf(toSendStr + strlen(toSendStr), totalLength - strlen(toSendStr), "%s", otherLines[i]);
@@ -79,7 +78,7 @@ char *makeResponse(const struct ServerMessage toSend) {
 }
 
 // Handles an incoming line and amends the describer accordingly
-struct ClientMessage interpretLine(char *line, struct ClientMessage describer, const int lineNo) {
+void interpretLine(char *line, struct ClientMessage *describer, const int lineNo) {
     char *toMatch = " "; // We'll split it up by spaces
     char **subPtr = &line; // save where we got to when we match the string
     char *current = strtok_r(line, toMatch, subPtr);
@@ -90,25 +89,22 @@ struct ClientMessage interpretLine(char *line, struct ClientMessage describer, c
         if (lineNo == 0) {
             if (partNo == 0) { // Type of request, se the request type
                 if (strcmp(current, "GET") == 0) {
-                    describer.requestType = GET;
+                    describer->requestType = GET;
                 } else if (strcmp(current, "HEAD") == 0) {
-                    describer.requestType = HEAD;
+                    describer->requestType = HEAD;
                 } else {
-                    describer.requestType = INVALID;
+                    describer->requestType = INVALID;
                 }
             } else if (partNo == 1) { // Resource being requested
-                switch(describer.requestType) {
+                switch(describer->requestType) {
                     case HEAD:
-                        describer.head.file = malloc(sizeof(char) * strlen(current));
-                        describer.head.file = strcpy(describer.head.file, current);
+                        describer->head.file = current;
                         break;
                     case GET:
-                        describer.get.file = malloc(sizeof(char) * strlen(current));
-                        describer.get.file = strcpy(describer.get.file, current);
+                        describer->head.file = current;
                         break;
                     case PUT:
-                        describer.put.file = malloc(sizeof(char) * strlen(current));
-                        describer.put.file = strcpy(describer.put.file, current);
+                        describer->head.file = current;
                         break;
                 }
             }
@@ -118,40 +114,28 @@ struct ClientMessage interpretLine(char *line, struct ClientMessage describer, c
         current = strtok_r(line, toMatch, subPtr);
         partNo++;
     }
-
-    return describer;
 }
 
 // Handles an incoming message and returns a describer
-struct ClientMessage parseMessage(char *content) {
+struct ClientMessage *parseMessage(char *content) {
     // Create a new describer
-    struct ClientMessage messageDescriber;
+    struct ClientMessage *messageDescriber = (struct ClientMessage*) malloc(sizeof(struct ClientMessage));
     char **subPtr = &content;
     int lineNo = 0;
 
     // Now, we need to parse the incoming message
     // We'll split the incoming message by \r\n and interpret it on-the-fly
-    char *toMatch = "\r\n";
     char *ptr = strtok_r(content, "\r\n", subPtr);
-    char *line = malloc(sizeof(char) * 10);
-    size_t lineLength = 10;
 
     while (ptr != NULL) {
-        // Copy the line over
-        if (strlen(ptr) > lineLength) {
-            line = realloc(line, sizeof(char) * strlen(ptr));
-            lineLength = strlen(ptr);
-        }
-        strcpy(line, ptr);
         // Interpret the line
-        messageDescriber = interpretLine(line, messageDescriber, lineNo);
+        interpretLine(ptr, messageDescriber, lineNo);
         // Return the memory
 
         // find the next new line, or the end of the file
         ptr = strtok_r(content, "\r\n", subPtr);
         lineNo++;
     }
-    free(line);
 
     return messageDescriber;
 }
@@ -162,6 +146,9 @@ void sendError(struct ServerMessage message, int sock_fd) {
     switch (message.responseCode) {
         case 404:
             message.message = "Resource cannot be located.";
+            break;
+        case 403:
+            message.message = "You do not have permission to view the specified resource.";
             break;
         case 400:
             message.message = "Invalid or malformed request.";
@@ -179,19 +166,19 @@ void sendError(struct ServerMessage message, int sock_fd) {
 }
 
 // Handles a GET request
-void handleGet(const struct ClientMessage describer, const int sock_fd) {
+void handleGet(const struct ClientMessage *describer, const int sock_fd) {
     // validity logic and file obtaining
     char *toSend;
     struct ServerMessage sMessage;
 
-    if (lookupFile(describer.get.file)) {
+    if (lookupFile(describer->get.file)) {
         sMessage.responseCode = 200;
         sMessage.message = "OK";
-        toSend = readFile(describer.get.file);
+        toSend = readFile(describer->get.file);
         sMessage.content = toSend;
         sMessage.contentLength = strlen(toSend);
     } else {
-        printf("%s%s", "Couldn't find file: ", describer.get.file);
+        printf("%s%s", "Couldn't find file: ", describer->get.file);
         sMessage.responseCode = 404;
         sendError(sMessage, sock_fd);
         return;
@@ -204,7 +191,7 @@ void handleGet(const struct ClientMessage describer, const int sock_fd) {
 }
 
 // Handles a HEAD request
-void handleHead(const struct ClientMessage describer, const int sock_fd) {
+void handleHead(const struct ClientMessage *describer, const int sock_fd) {
     // same logic from get
     struct ServerMessage message;
     message.responseCode = 200;
@@ -217,31 +204,38 @@ void handleHead(const struct ClientMessage describer, const int sock_fd) {
 }
 
 // handles an invalid request from the client
-void handleInvalidRequest(const struct ClientMessage describer, const int sock_fd) {
+void handleInvalidRequest(const struct ClientMessage *describer, const int sock_fd) {
     struct ServerMessage message;
     message.responseCode = 400;
     sendError(message, sock_fd);
 }
 
 // Handles a request after it has been parsed.
-void handleRequest(const struct ClientMessage describer, const int sock_fd) {
-    switch(describer.requestType) {
-        case GET:
-            handleGet(describer, sock_fd);
-            break;
-        case HEAD:
-            handleHead(describer, sock_fd);
-            break;
-        default:
-            handleInvalidRequest(describer, sock_fd);
-            break;
+void handleRequest(struct ClientMessage *describer, const int sock_fd, const struct ServerProperties *properties) {
+    int response = 1;
+
+    if (describer->requestType == HEAD
+        || describer->requestType == GET
+        || describer->requestType == PUT) {
+        response = makeSafe(describer, properties);
     }
 
-    if (describer.get.file) {
-        free(describer.get.file);
-    } else if (describer.head.file) {
-        free(describer.head.file);
-    } else if (describer.put.file) {
-        free(describer.put.file);
+    // Check it's a valid request :)
+    if (response != 1) {
+        struct ServerMessage message;
+        message.responseCode = response;
+        sendError(message, sock_fd);
+    } else {
+        switch (describer->requestType) {
+            case GET:
+                handleGet(describer, sock_fd);
+                break;
+            case HEAD:
+                handleHead(describer, sock_fd);
+                break;
+            default:
+                handleInvalidRequest(describer, sock_fd);
+                break;
+        }
     }
 }

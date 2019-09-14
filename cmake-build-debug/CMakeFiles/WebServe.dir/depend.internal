@@ -3,8 +3,10 @@
 
 CMakeFiles/WebServe.dir/main.c.o
  /home/samgunner/Documents/ccpp/WebServe/ClientMessage.c
+ /home/samgunner/Documents/ccpp/WebServe/Config.c
  /home/samgunner/Documents/ccpp/WebServe/FileUtilities.c
  /home/samgunner/Documents/ccpp/WebServe/Network.c
+ /home/samgunner/Documents/ccpp/WebServe/Properties.c
  /home/samgunner/Documents/ccpp/WebServe/ResponseHandling.c
  /home/samgunner/Documents/ccpp/WebServe/ServerMessage.c
  /home/samgunner/Documents/ccpp/WebServe/main.c

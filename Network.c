@@ -66,6 +66,5 @@ char* readMessage(const int sock_fd) {
 
 // Sends a message back to the client
 void sendMessage(int connection, char *message) {
-    printf("%s%s", "Sending the following content:\n", message);
     send(connection, message, strlen(message), 0);
 }

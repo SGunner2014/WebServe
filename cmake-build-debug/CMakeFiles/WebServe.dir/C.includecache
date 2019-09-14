@@ -8,6 +8,12 @@
 
 /home/samgunner/Documents/ccpp/WebServe/ClientMessage.c
 
+/home/samgunner/Documents/ccpp/WebServe/Config.c
+Properties.c
+/home/samgunner/Documents/ccpp/WebServe/Properties.c
+FileUtilities.c
+/home/samgunner/Documents/ccpp/WebServe/FileUtilities.c
+
 /home/samgunner/Documents/ccpp/WebServe/FileUtilities.c
 stdlib.h
 -
@@ -15,6 +21,10 @@ unistd.h
 -
 sys/stat.h
 -
+string.h
+-
+Properties.c
+/home/samgunner/Documents/ccpp/WebServe/Properties.c
 
 /home/samgunner/Documents/ccpp/WebServe/Network.c
 stdio.h
@@ -27,6 +37,8 @@ netinet/in.h
 -
 string.h
 -
+
+/home/samgunner/Documents/ccpp/WebServe/Properties.c
 
 /home/samgunner/Documents/ccpp/WebServe/ResponseHandling.c
 stdio.h
@@ -57,4 +69,6 @@ Network.c
 /home/samgunner/Documents/ccpp/WebServe/Network.c
 ResponseHandling.c
 /home/samgunner/Documents/ccpp/WebServe/ResponseHandling.c
+Config.c
+/home/samgunner/Documents/ccpp/WebServe/Config.c
 
